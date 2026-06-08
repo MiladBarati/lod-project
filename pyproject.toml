@@ -27,6 +27,13 @@ dependencies = [
     "jsonschema"
 ]
 
+[project.optional-dependencies]
+dev = [
+    "httpx",
+    "fastapi",
+    "uvicorn"
+]
+
 [project.urls]
 Homepage = "https://github.com/MiladBarati/lod-project"
 Repository = "https://github.com/MiladBarati/lod-project.git"

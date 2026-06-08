@@ -30,9 +30,9 @@
 
 ## 5. Publish & Ship
 
-- [ ] 5.1 Create initial git commit with all project files
-- [ ] 5.2 Create public GitHub repository (named `lod`)
-- [ ] 5.3 Push to GitHub and verify CI workflow runs and passes
-- [ ] 5.4 Build final sdist + wheel with `python -m build`
+- [x] 5.1 Create initial git commit with all project files
+- [x] 5.2 Create public GitHub repository (named `lod`)
+- [x] 5.3 Push to GitHub and verify CI workflow runs and passes
+- [x] 5.4 Build final sdist + wheel with `python -m build`
 - [ ] 5.5 Upload to PyPI with `twine upload dist/*`
 - [ ] 5.6 Verify `pip install lod` works from PyPI in a clean environment
