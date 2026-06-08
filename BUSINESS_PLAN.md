@@ -155,7 +155,7 @@ LOD utilizes a developer-first PLG CLI funnel coupled with a **usage-based runti
 ## 8. Product Roadmap
 
 ### Near-Term (0-6 Months)
-- **P0**: Publish package to PyPI (`pip install lod`).
+- **P0**: Publish package to PyPI (`pip install lod-cli`).
 - **P0**: Launch hosted proxy runtime for cloud agent deployments.
 - **P1**: CLI `lod proxy` integration (Shipped).
 - **P1**: Remote/shared spec registry.
