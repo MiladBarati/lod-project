@@ -1,6 +1,8 @@
-import unittest
 import copy
+import unittest
+
 from lod.drift import compare_specs
+
 
 class TestSchemaDrift(unittest.TestCase):
     def setUp(self):
@@ -60,7 +62,7 @@ class TestSchemaDrift(unittest.TestCase):
     def test_deleted_endpoint(self):
         new_spec = copy.deepcopy(self.base_spec)
         del new_spec["paths"]["/users"]["post"]
-        
+
         report = compare_specs(self.base_spec, new_spec)
         self.assertTrue(report["is_breaking"])
         self.assertTrue(any("Deleted endpoint" in c for c in report["breaking_changes"]))
@@ -71,7 +73,7 @@ class TestSchemaDrift(unittest.TestCase):
             "summary": "Update User",
             "responses": {"200": {"description": "updated"}}
         }
-        
+
         report = compare_specs(self.base_spec, new_spec)
         self.assertFalse(report["is_breaking"])
         self.assertTrue(any("Added endpoint: PUT /users" in c for c in report["non_breaking_changes"]))

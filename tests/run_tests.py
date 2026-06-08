@@ -1,19 +1,13 @@
-import sys
-import os
-import unittest
 import json
-import tempfile
+import os
 import shutil
-from unittest.mock import patch, MagicMock
+import tempfile
+import unittest
+from unittest.mock import patch
 
-from lod.llm_openapi import LLMOpenAPIConverter
 import lod.cli as cli
 import lod.registry as registry
-from tests.test_remediation import TestGithubRemediator, TestCLIRemediationIntegration
-from tests.test_proxy import TestProxyUnit, TestProxyIntegration
-from tests.test_middleware import TestRequestValidatorUnit, TestMiddlewareIntegration
-from tests.test_telemetry import TestTelemetry
-
+from lod.llm_openapi import LLMOpenAPIConverter
 
 # Mock OpenAPI specification for testing
 TEST_SPEC = {
@@ -173,25 +167,25 @@ class TestModelAdapters(unittest.TestCase):
                 }
             }
         }
-        
+
         # 1. Generic Formatter
         generic_out = LLMOpenAPIConverter(spec_with_refs).convert()
         self.assertIn("definitions:", generic_out)
         self.assertIn("User: object", generic_out)
         self.assertIn("application/json: $User", generic_out)
-        
+
         # 2. GPT Formatter
         gpt_out = LLMOpenAPIConverter(spec_with_refs, model="gpt").convert()
         self.assertIn("definitions:", gpt_out)
         self.assertIn("User: object", gpt_out)
         self.assertIn("application/json: $User", gpt_out)
-        
+
         # 3. Claude Formatter
         claude_out = LLMOpenAPIConverter(spec_with_refs, model="claude").convert()
         self.assertIn("<definitions>", claude_out)
         self.assertIn('<property name="User" type="object">', claude_out)
         self.assertIn('ref="User"', claude_out)
-        
+
         # 4. Gemini Formatter
         gemini_out = LLMOpenAPIConverter(spec_with_refs, model="gemini").convert()
         self.assertIn("interface User {", gemini_out)
@@ -214,7 +208,7 @@ class TestRegistry(unittest.TestCase):
         dest = registry.register_spec(self.input_file, "test-api", "v1.0.0", registry_dir=self.temp_dir)
         self.assertTrue(os.path.exists(dest))
         self.assertTrue(dest.endswith("test-api/v1.0.0.json"))
-        
+
         fetched = registry.get_spec("test-api", "v1.0.0", registry_dir=self.temp_dir)
         self.assertEqual(fetched["info"]["title"], "Test API")
 
@@ -223,10 +217,10 @@ class TestRegistry(unittest.TestCase):
         registry.register_spec(self.input_file, "test-api", "v1.0.0", registry_dir=self.temp_dir)
         resolved = registry.resolve_registry_uri("registry://test-api:v1.0.0", registry_dir=self.temp_dir)
         self.assertEqual(resolved["info"]["title"], "Test API")
-        
+
         with self.assertRaises(ValueError):
             registry.resolve_registry_uri("registry://test-api", registry_dir=self.temp_dir)
-            
+
         with self.assertRaises(FileNotFoundError):
             registry.resolve_registry_uri("registry://test-api:v2.0.0", registry_dir=self.temp_dir)
 
@@ -237,7 +231,7 @@ class TestCLI(unittest.TestCase):
         self.spec_file = os.path.join(self.temp_dir, "spec.json")
         self.breaking_spec_file = os.path.join(self.temp_dir, "breaking.json")
         self.output_file = os.path.join(self.temp_dir, "output.md")
-        
+
         with open(self.spec_file, "w", encoding="utf-8") as f:
             json.dump(TEST_SPEC, f)
         with open(self.breaking_spec_file, "w", encoding="utf-8") as f:

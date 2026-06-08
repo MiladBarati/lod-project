@@ -99,7 +99,7 @@ class SyncTelemetryReporter:
     def report_validation_error(self, method: str, url: str, errors: List[Dict[str, Any]]):
         if not self.enabled:
             return
-        
+
         # Start worker thread lazily
         if self._thread is None:
             self.start()
@@ -122,7 +122,7 @@ class SyncTelemetryReporter:
                 if event is None:
                     self.queue.task_done()
                     break
-                
+
                 self._send_event(event)
                 self.queue.task_done()
             except queue.Empty:
@@ -133,7 +133,7 @@ class SyncTelemetryReporter:
     def _send_event(self, event: Dict[str, Any]):
         if not self.endpoint:
             return
-        
+
         req = urllib.request.Request(
             self.endpoint,
             data=json.dumps(event).encode("utf-8"),
@@ -141,7 +141,7 @@ class SyncTelemetryReporter:
         )
         if self.api_key:
             req.add_header("Authorization", f"Bearer {self.api_key}")
-            
+
         try:
             with urllib.request.urlopen(req, timeout=2.0) as response:
                 response.read()
@@ -191,7 +191,7 @@ class AsyncTelemetryReporter:
     async def report_validation_error(self, method: str, url: str, errors: List[Dict[str, Any]]):
         if not self.enabled or not asyncio:
             return
-        
+
         if self._task is None:
             await self.start()
 
@@ -213,7 +213,7 @@ class AsyncTelemetryReporter:
                 if event is None:
                     self.queue.task_done()
                     break
-                
+
                 await self._send_event(event)
                 self.queue.task_done()
             except asyncio.CancelledError:
@@ -224,11 +224,11 @@ class AsyncTelemetryReporter:
     async def _send_event(self, event: Dict[str, Any]):
         if not self.endpoint or not self._client:
             return
-        
+
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-            
+
         try:
             response = await self._client.post(
                 self.endpoint,

@@ -1,14 +1,15 @@
-import unittest
+import io
 import json
 import os
-import tempfile
 import shutil
-from unittest.mock import patch, MagicMock
+import tempfile
+import unittest
 import urllib.error
-import io
+from unittest.mock import MagicMock, patch
 
-from lod.remediation import GithubRemediator
 import lod.cli as cli
+from lod.remediation import GithubRemediator
+
 
 class TestGithubRemediator(unittest.TestCase):
     def setUp(self):
@@ -129,7 +130,7 @@ class TestGithubRemediator(unittest.TestCase):
         }
 
         result = self.remediator.remediate(self.mock_spec, model="gpt")
-        
+
         mock_base_sha.assert_called_once()
         mock_branch.assert_called_once()
         mock_file_sha.assert_called_once()
@@ -150,7 +151,7 @@ class TestGithubRemediator(unittest.TestCase):
         mock_base_sha.return_value = "base123sha"
         mock_file_sha.return_value = "file456sha"
         mock_pr.return_value = {"html_url": "https://github.com/test-owner/test-repo/pull/101", "number": 101}
-        
+
         mock_subprocess_result = MagicMock()
         mock_subprocess_result.returncode = 0
         mock_subprocess_result.stdout = "test passed"
@@ -198,7 +199,7 @@ class TestGithubRemediator(unittest.TestCase):
         mock_base_sha.return_value = "base123sha"
         mock_file_sha.return_value = "file456sha"
         mock_pr.return_value = {"html_url": "https://github.com/test-owner/test-repo/pull/101", "number": 101}
-        
+
         mock_subprocess_result = MagicMock()
         mock_subprocess_result.returncode = 1
         mock_subprocess_result.stdout = ""
@@ -222,7 +223,7 @@ class TestCLIRemediationIntegration(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.base_spec_file = os.path.join(self.temp_dir, "base.json")
         self.current_spec_file = os.path.join(self.temp_dir, "current.json")
-        
+
         # Test OpenAPI spec with a parameter
         self.base_spec = {
             "openapi": "3.0.0",
@@ -283,7 +284,7 @@ class TestCLIRemediationIntegration(unittest.TestCase):
 
         with patch("sys.argv", args):
             cli.main()
-        
+
         # Verify the remediator was correctly initialized and invoked
         mock_remediator_class.assert_called_once_with(
             repo="owner/repo",
@@ -319,7 +320,7 @@ class TestCLIRemediationIntegration(unittest.TestCase):
 
         with patch("sys.argv", args):
             cli.main()
-        
+
         mock_remediator_class.assert_called_once_with(
             repo="owner/repo",
             token="token123",

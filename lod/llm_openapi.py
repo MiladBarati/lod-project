@@ -1,6 +1,7 @@
-import json
-from typing import Any, Dict, List, Set, Union, Optional
+from typing import Any, Dict, List, Optional, Set
+
 from .ref_resolver import RefResolver
+
 
 class LLMOpenAPIConverter:
     """
@@ -39,11 +40,11 @@ class GenericFormatter:
         title = info.get("title", "API Spec")
         version = info.get("version", "1.0.0")
         desc = info.get("description", "")
-        
+
         md.append(f"# {title} (v{version})")
         if desc:
             md.append(f"desc: {desc.strip()}\n")
-            
+
         components = self.spec.get("components", {})
         schemas = components.get("schemas", {})
         if schemas:
@@ -51,7 +52,7 @@ class GenericFormatter:
             for schema_name, schema_body in schemas.items():
                 md.extend(self._format_property(schema_name, schema_body, indent=2))
             md.append("")
-            
+
         paths = self.spec.get("paths", {})
         for path, path_item in paths.items():
             if not isinstance(path_item, dict):
@@ -62,28 +63,28 @@ class GenericFormatter:
                     continue
                 if not isinstance(op, dict):
                     continue
-                
+
                 md.append(self._render_operation(path, method.upper(), op, shared_params))
-                
+
         return "\n".join(md)
 
     def _render_operation(self, path: str, method: str, op: Dict[str, Any], shared_params: List[Dict[str, Any]]) -> str:
         summary = op.get("summary", "")
         summary_str = f' "{summary}"' if summary else ""
         desc = op.get("description", "").replace("\n", " ").strip()
-        
+
         md = []
         md.append(f"{method} {path}{summary_str}")
         if desc:
             md.append(f"  desc: {desc}")
-            
+
         security = op.get("security", self.spec.get("security", []))
         if security:
             auths = []
             for item in security:
                 auths.extend(item.keys())
             md.append(f"  auth: {', '.join(auths)}")
-            
+
         params = op.get("parameters", []) + shared_params
         if params:
             grouped_params = {}
@@ -99,7 +100,7 @@ class GenericFormatter:
                 if p_in not in grouped_params:
                     grouped_params[p_in] = []
                 grouped_params[p_in].append(param)
-                
+
             if grouped_params:
                 md.append("  params:")
                 for p_in, p_list in grouped_params.items():
@@ -114,7 +115,7 @@ class GenericFormatter:
                             ptype = pschema.get("type", "any")
                         pcomment = f" # {pdesc}" if pdesc else ""
                         md.append(f"      {name}: {ptype}{req}{pcomment}")
-                        
+
         req_body = op.get("requestBody")
         if req_body:
             if "$ref" in req_body:
@@ -128,7 +129,7 @@ class GenericFormatter:
                 for ctype, cdetails in content.items():
                     schema = cdetails.get("schema", {})
                     md.extend(self._format_property(ctype, schema, indent=4))
-                    
+
         responses = op.get("responses", {})
         if responses:
             md.append("  res:")
@@ -142,7 +143,7 @@ class GenericFormatter:
                     continue
                 rdesc = resp.get("description", "").replace("\n", " ").strip()
                 rdesc_comment = f" # {rdesc}" if rdesc else ""
-                
+
                 rcontent = resp.get("content", {})
                 if rcontent:
                     for ctype, cdetails in rcontent.items():
@@ -151,20 +152,20 @@ class GenericFormatter:
                         md.extend(self._format_property(ctype, schema, indent=6))
                 else:
                     md.append(f"    {code}:{rdesc_comment}")
-                    
+
         md.append("")
         return "\n".join(md)
 
     def _format_property(self, name: str, schema: Any, indent: int = 0, required: bool = False, visited: Set[str] = None) -> List[str]:
         if visited is None:
             visited = set()
-            
+
         indent_str = " " * indent
         req_str = " (required)" if required else ""
-        
+
         if not isinstance(schema, dict):
             return [f"{indent_str}{name}: {schema}{req_str}"]
-            
+
         if "$ref" in schema:
             ref_path = schema["$ref"]
             if ref_path.startswith("#/components/schemas/"):
@@ -183,12 +184,12 @@ class GenericFormatter:
                     return self._format_property(name, resolved, indent, required, new_visited)
                 except:
                     pass
-            
+
         stype = schema.get("type", "any")
         sdesc = schema.get("description", "").replace("\n", " ").strip()
         default = schema.get("default")
         example = schema.get("example")
-        
+
         comment_parts = []
         if sdesc:
             comment_parts.append(sdesc)
@@ -197,13 +198,13 @@ class GenericFormatter:
         if example is not None:
             comment_parts.append(f"example: {example}")
         comment_str = f" # {', '.join(comment_parts)}" if comment_parts else ""
-        
+
         combiner = None
         for c in ["allOf", "anyOf", "oneOf"]:
             if c in schema:
                 combiner = c
                 break
-                
+
         if combiner:
             lines = [f"{indent_str}{name} ({combiner}):{comment_str}"]
             for i, item in enumerate(schema[combiner]):
@@ -213,16 +214,16 @@ class GenericFormatter:
         if stype == "object":
             properties = schema.get("properties", {})
             required_fields = set(schema.get("required", []))
-            
+
             if not properties:
                 return [f"{indent_str}{name}: object{req_str}{comment_str}"]
-                
+
             lines = [f"{indent_str}{name}: object{req_str}{comment_str}"]
             for prop_name, prop_data in properties.items():
                 is_req = prop_name in required_fields
                 lines.extend(self._format_property(prop_name, prop_data, indent + 2, is_req, visited))
             return lines
-            
+
         elif stype == "array":
             items = schema.get("items")
             if isinstance(items, dict):
@@ -242,7 +243,7 @@ class GenericFormatter:
                             items = resolved
                         except:
                             pass
-                            
+
                 if isinstance(items, dict):
                     item_type = items.get("type", "any")
                     if item_type == "object":
@@ -262,7 +263,7 @@ class GenericFormatter:
                     return [f"{indent_str}{name}: array{req_str}{comment_str}"]
             else:
                 return [f"{indent_str}{name}: array{req_str}{comment_str}"]
-                
+
         else:
             return [f"{indent_str}{name}: {stype}{req_str}{comment_str}"]
 
@@ -280,12 +281,12 @@ class ClaudeXMLFormatter:
         title = info.get("title", "API Spec")
         version = info.get("version", "1.0.0")
         desc = info.get("description", "")
-        
+
         lines = []
         lines.append(f'<api title="{title}" version="{version}">')
         if desc:
             lines.append(f'  <description>{desc.strip()}</description>')
-            
+
         components = self.spec.get("components", {})
         schemas = components.get("schemas", {})
         if schemas:
@@ -293,7 +294,7 @@ class ClaudeXMLFormatter:
             for schema_name, schema_body in schemas.items():
                 lines.extend(self._format_property_xml(schema_body, name=schema_name, indent=4))
             lines.append("  </definitions>")
-        
+
         paths = self.spec.get("paths", {})
         for path, path_item in paths.items():
             if not isinstance(path_item, dict):
@@ -305,7 +306,7 @@ class ClaudeXMLFormatter:
                 if not isinstance(op, dict):
                     continue
                 lines.append(self._render_operation(path, method.upper(), op, shared_params))
-                
+
         lines.append('</api>')
         return "\n".join(lines)
 
@@ -314,21 +315,21 @@ class ClaudeXMLFormatter:
         desc = op.get("description", "").replace("\n", " ").strip()
         if not desc and summary:
             desc = summary
-        
+
         lines = ["  <endpoint>"]
         lines.append(f"    <path>{method} {path}</path>")
         if summary:
             lines.append(f"    <summary>{summary}</summary>")
         if desc:
             lines.append(f"    <description>{desc}</description>")
-            
+
         security = op.get("security", self.spec.get("security", []))
         if security:
             auths = []
             for item in security:
                 auths.extend(item.keys())
             lines.append(f"    <auth>{', '.join(auths)}</auth>")
-            
+
         params = op.get("parameters", []) + shared_params
         if params:
             grouped_params = {}
@@ -344,7 +345,7 @@ class ClaudeXMLFormatter:
                 if p_in not in grouped_params:
                     grouped_params[p_in] = []
                 grouped_params[p_in].append(param)
-                
+
             if grouped_params:
                 lines.append("    <parameters>")
                 for p_in, p_list in grouped_params.items():
@@ -358,7 +359,7 @@ class ClaudeXMLFormatter:
                             ptype = pschema.get("type", "any")
                         lines.append(f'      <{p_in} name="{name}" type="{ptype}" required="{req}">{pdesc}</{p_in}>')
                 lines.append("    </parameters>")
-                
+
         req_body = op.get("requestBody")
         if req_body:
             if "$ref" in req_body:
@@ -373,7 +374,7 @@ class ClaudeXMLFormatter:
                     lines.append(f'    <request_body content_type="{ctype}">')
                     lines.extend(self._format_property_xml(schema, indent=6))
                     lines.append('    </request_body>')
-                    
+
         responses = op.get("responses", {})
         if responses:
             lines.append("    <responses>")
@@ -387,7 +388,7 @@ class ClaudeXMLFormatter:
                     continue
                 rdesc = resp.get("description", "").replace("\n", " ").strip()
                 rdesc_attr = f' description="{rdesc}"' if rdesc else ""
-                
+
                 rcontent = resp.get("content", {})
                 if rcontent:
                     for ctype, cdetails in rcontent.items():
@@ -398,21 +399,21 @@ class ClaudeXMLFormatter:
                 else:
                     lines.append(f'      <response code="{code}"{rdesc_attr} />')
             lines.append("    </responses>")
-            
+
         lines.append("  </endpoint>")
         return "\n".join(lines)
 
     def _format_property_xml(self, schema: Any, name: Optional[str] = None, indent: int = 0, required: bool = False, visited: Set[str] = None) -> List[str]:
         if visited is None:
             visited = set()
-            
+
         indent_str = " " * indent
         name_attr = f' name="{name}"' if name else ""
         req_attr = ' required="true"' if required else ""
-        
+
         if not isinstance(schema, dict):
             return [f'{indent_str}<property{name_attr} type="{schema}"{req_attr} />']
-            
+
         if "$ref" in schema:
             ref_path = schema["$ref"]
             if ref_path.startswith("#/components/schemas/"):
@@ -431,7 +432,7 @@ class ClaudeXMLFormatter:
                     return self._format_property_xml(resolved, name, indent, required, new_visited)
                 except:
                     pass
-            
+
         stype = schema.get("type", "any")
         sdesc = schema.get("description", "").replace("\n", " ").strip()
         desc_attr = f' description="{sdesc}"' if sdesc else ""
@@ -439,13 +440,13 @@ class ClaudeXMLFormatter:
         default_attr = f' default="{default}"' if default is not None else ""
         example = schema.get("example")
         example_attr = f' example="{example}"' if example is not None else ""
-        
+
         combiner = None
         for c in ["allOf", "anyOf", "oneOf"]:
             if c in schema:
                 combiner = c
                 break
-                
+
         if combiner:
             lines = [f'{indent_str}<property{name_attr} type="combiner" combiner="{combiner}"{req_attr}{desc_attr}>']
             for i, item in enumerate(schema[combiner]):
@@ -456,17 +457,17 @@ class ClaudeXMLFormatter:
         if stype == "object":
             properties = schema.get("properties", {})
             required_fields = set(schema.get("required", []))
-            
+
             if not properties:
                 return [f'{indent_str}<property{name_attr} type="object"{req_attr}{desc_attr}{default_attr}{example_attr} />']
-                
+
             lines = [f'{indent_str}<property{name_attr} type="object"{req_attr}{desc_attr}{default_attr}{example_attr}>']
             for prop_name, prop_data in properties.items():
                 is_req = prop_name in required_fields
                 lines.extend(self._format_property_xml(prop_data, prop_name, indent + 2, is_req, visited))
             lines.append(f'{indent_str}</property>')
             return lines
-            
+
         elif stype == "array":
             items = schema.get("items")
             if isinstance(items, dict):
@@ -486,7 +487,7 @@ class ClaudeXMLFormatter:
                             items = resolved
                         except:
                             pass
-                            
+
                 if isinstance(items, dict):
                     item_type = items.get("type", "any")
                     if item_type == "object":
@@ -507,7 +508,7 @@ class ClaudeXMLFormatter:
                     return [f'{indent_str}<property{name_attr} type="array" item_type="any"{req_attr}{desc_attr} />']
             else:
                 return [f'{indent_str}<property{name_attr} type="array" item_type="any"{req_attr}{desc_attr} />']
-                
+
         else:
             return [f'{indent_str}<property{name_attr} type="{stype}"{req_attr}{desc_attr}{default_attr}{example_attr} />']
 
@@ -525,7 +526,7 @@ class GPTYAMLFormatter:
         title = info.get("title", "API Spec")
         version = info.get("version", "1.0.0")
         desc = info.get("description", "")
-        
+
         md = []
         md.append("info:")
         md.append(f"  title: {title}")
@@ -534,7 +535,7 @@ class GPTYAMLFormatter:
             desc_val = desc.replace("\n", " ").strip()
             md.append(f"  desc: {desc_val}")
         md.append("")
-        
+
         components = self.spec.get("components", {})
         schemas = components.get("schemas", {})
         if schemas:
@@ -542,7 +543,7 @@ class GPTYAMLFormatter:
             for schema_name, schema_body in schemas.items():
                 md.extend(self._format_property(schema_name, schema_body, indent=2))
             md.append("")
-        
+
         paths = self.spec.get("paths", {})
         for path, path_item in paths.items():
             if not isinstance(path_item, dict):
@@ -554,7 +555,7 @@ class GPTYAMLFormatter:
                 if not isinstance(op, dict):
                     continue
                 md.append(self._render_operation(path, method.upper(), op, shared_params))
-                
+
         return "\n".join(md)
 
     def _render_operation(self, path: str, method: str, op: Dict[str, Any], shared_params: List[Dict[str, Any]]) -> str:
@@ -562,19 +563,19 @@ class GPTYAMLFormatter:
         summary = op.get("summary", "")
         if not desc and summary:
             desc = summary
-            
+
         md = []
         md.append(f"{method} {path}:")
         if desc:
             md.append(f"  desc: {desc}")
-            
+
         security = op.get("security", self.spec.get("security", []))
         if security:
             auths = []
             for item in security:
                 auths.extend(item.keys())
             md.append(f"  auth: {', '.join(auths)}")
-            
+
         params = op.get("parameters", []) + shared_params
         if params:
             grouped_params = {}
@@ -590,7 +591,7 @@ class GPTYAMLFormatter:
                 if p_in not in grouped_params:
                     grouped_params[p_in] = []
                 grouped_params[p_in].append(param)
-                
+
             if grouped_params:
                 md.append("  params:")
                 for p_in, p_list in grouped_params.items():
@@ -605,7 +606,7 @@ class GPTYAMLFormatter:
                             ptype = pschema.get("type", "any")
                         pcomment = f" # {pdesc}" if pdesc else ""
                         md.append(f"      {name}: {ptype}{req}{pcomment}")
-                        
+
         req_body = op.get("requestBody")
         if req_body:
             if "$ref" in req_body:
@@ -619,7 +620,7 @@ class GPTYAMLFormatter:
                 for ctype, cdetails in content.items():
                     schema = cdetails.get("schema", {})
                     md.extend(self._format_property(ctype, schema, indent=4))
-                    
+
         responses = op.get("responses", {})
         if responses:
             md.append("  res:")
@@ -633,7 +634,7 @@ class GPTYAMLFormatter:
                     continue
                 rdesc = resp.get("description", "").replace("\n", " ").strip()
                 rdesc_comment = f" # {rdesc}" if rdesc else ""
-                
+
                 rcontent = resp.get("content", {})
                 if rcontent:
                     for ctype, cdetails in rcontent.items():
@@ -642,20 +643,20 @@ class GPTYAMLFormatter:
                         md.extend(self._format_property(ctype, schema, indent=6))
                 else:
                     md.append(f"    {code}:{rdesc_comment}")
-                    
+
         md.append("")
         return "\n".join(md)
 
     def _format_property(self, name: str, schema: Any, indent: int = 0, required: bool = False, visited: Set[str] = None) -> List[str]:
         if visited is None:
             visited = set()
-            
+
         indent_str = " " * indent
         req_str = " (required)" if required else ""
-        
+
         if not isinstance(schema, dict):
             return [f"{indent_str}{name}: {schema}{req_str}"]
-            
+
         if "$ref" in schema:
             ref_path = schema["$ref"]
             if ref_path.startswith("#/components/schemas/"):
@@ -674,12 +675,12 @@ class GPTYAMLFormatter:
                     return self._format_property(name, resolved, indent, required, new_visited)
                 except:
                     pass
-            
+
         stype = schema.get("type", "any")
         sdesc = schema.get("description", "").replace("\n", " ").strip()
         default = schema.get("default")
         example = schema.get("example")
-        
+
         comment_parts = []
         if sdesc:
             comment_parts.append(sdesc)
@@ -688,13 +689,13 @@ class GPTYAMLFormatter:
         if example is not None:
             comment_parts.append(f"example: {example}")
         comment_str = f" # {', '.join(comment_parts)}" if comment_parts else ""
-        
+
         combiner = None
         for c in ["allOf", "anyOf", "oneOf"]:
             if c in schema:
                 combiner = c
                 break
-                
+
         if combiner:
             lines = [f"{indent_str}{name} ({combiner}):{comment_str}"]
             for i, item in enumerate(schema[combiner]):
@@ -704,16 +705,16 @@ class GPTYAMLFormatter:
         if stype == "object":
             properties = schema.get("properties", {})
             required_fields = set(schema.get("required", []))
-            
+
             if not properties:
                 return [f"{indent_str}{name}: object{req_str}{comment_str}"]
-                
+
             lines = [f"{indent_str}{name}: object{req_str}{comment_str}"]
             for prop_name, prop_data in properties.items():
                 is_req = prop_name in required_fields
                 lines.extend(self._format_property(prop_name, prop_data, indent + 2, is_req, visited))
             return lines
-            
+
         elif stype == "array":
             items = schema.get("items")
             if isinstance(items, dict):
@@ -733,7 +734,7 @@ class GPTYAMLFormatter:
                             items = resolved
                         except:
                             pass
-                            
+
                 if isinstance(items, dict):
                     item_type = items.get("type", "any")
                     if item_type == "object":
@@ -753,7 +754,7 @@ class GPTYAMLFormatter:
                     return [f"{indent_str}{name}: array{req_str}{comment_str}"]
             else:
                 return [f"{indent_str}{name}: array{req_str}{comment_str}"]
-                
+
         else:
             return [f"{indent_str}{name}: {stype}{req_str}{comment_str}"]
 
@@ -771,13 +772,13 @@ class GeminiTypeScriptFormatter:
         title = info.get("title", "API Spec")
         version = info.get("version", "1.0.0")
         desc = info.get("description", "")
-        
+
         md = []
         md.append(f"// {title} (v{version})")
         if desc:
             desc_val = desc.replace("\n", " ").strip()
             md.append(f"// {desc_val}\n")
-            
+
         components = self.spec.get("components", {})
         schemas = components.get("schemas", {})
         if schemas:
@@ -785,7 +786,7 @@ class GeminiTypeScriptFormatter:
                 stype = schema_body.get("type", "object")
                 sdesc = schema_body.get("description", "").replace("\n", " ").strip()
                 comment = f" // {sdesc}" if sdesc else ""
-                
+
                 if stype == "object":
                     md.append(f"interface {schema_name} {{{comment}")
                     properties = schema_body.get("properties", {})
@@ -797,7 +798,7 @@ class GeminiTypeScriptFormatter:
                 else:
                     ts_type = self._openapi_to_ts_type(stype)
                     md.append(f"type {schema_name} = {ts_type};{comment}\n")
-            
+
         paths = self.spec.get("paths", {})
         for path, path_item in paths.items():
             if not isinstance(path_item, dict):
@@ -809,7 +810,7 @@ class GeminiTypeScriptFormatter:
                 if not isinstance(op, dict):
                     continue
                 md.append(self._render_operation(path, method.upper(), op, shared_params))
-                
+
         return "\n".join(md)
 
     def _generate_base_name(self, method: str, path: str, op: Dict[str, Any]) -> str:
@@ -817,7 +818,7 @@ class GeminiTypeScriptFormatter:
         if op_id:
             clean_id = "".join([c if c.isalnum() or c == "_" else "_" for c in op_id])
             return clean_id[0].lower() + clean_id[1:] if clean_id else "endpoint"
-            
+
         path_parts = [p.strip("{}") for p in path.split("/") if p.strip() and p not in ("v1", "v2")]
         if not path_parts:
             path_parts = ["root"]
@@ -842,17 +843,17 @@ class GeminiTypeScriptFormatter:
         desc = op.get("description", "").replace("\n", " ").strip()
         if not desc and summary:
             desc = summary
-            
+
         md = []
         md.append(f"// {method} {path}")
         if summary:
             md.append(f"// {summary}")
         if desc:
             md.append(f"// {desc}")
-            
+
         base_name = self._generate_base_name(method, path, op)
         cap_name = base_name[0].upper() + base_name[1:]
-        
+
         params = op.get("parameters", []) + shared_params
         has_params = False
         if params:
@@ -876,13 +877,13 @@ class GeminiTypeScriptFormatter:
                 opt = "" if req else "?"
                 comment = f" // {pdesc}" if pdesc else ""
                 param_lines.append(f"  {name}{opt}: {ts_type};{comment}")
-                
+
             if param_lines:
                 has_params = True
                 md.append(f"interface {cap_name}Params {{")
                 md.extend(param_lines)
                 md.append("}")
-                
+
         req_body = op.get("requestBody")
         has_req = False
         if req_body:
@@ -895,7 +896,7 @@ class GeminiTypeScriptFormatter:
                 content = req_body.get("content", {})
                 for ctype, cdetails in content.items():
                     schema = cdetails.get("schema", {})
-                    
+
                     if isinstance(schema, dict) and "$ref" in schema and schema["$ref"].startswith("#/components/schemas/"):
                         ref_name = schema["$ref"].split("/")[-1]
                         md.append(f"type {cap_name}Request = {ref_name};")
@@ -907,7 +908,7 @@ class GeminiTypeScriptFormatter:
                                 resolved_schema = self.resolver.resolve_pointer(resolved_schema["$ref"])
                             except:
                                 pass
-                                
+
                         if isinstance(resolved_schema, dict) and resolved_schema.get("type") == "object":
                             md.append(f"interface {cap_name}Request {{")
                             properties = resolved_schema.get("properties", {})
@@ -922,7 +923,7 @@ class GeminiTypeScriptFormatter:
                             ts_type = self._openapi_to_ts_type(stype)
                             md.append(f"type {cap_name}Request = {ts_type};")
                             has_req = True
-                        
+
         responses = op.get("responses", {})
         has_res = False
         if responses:
@@ -933,7 +934,7 @@ class GeminiTypeScriptFormatter:
                     break
             if success_code not in responses and responses:
                 success_code = list(responses.keys())[0]
-                
+
             resp = responses[success_code]
             if "$ref" in resp:
                 try:
@@ -946,7 +947,7 @@ class GeminiTypeScriptFormatter:
                     ctype = list(rcontent.keys())[0]
                     cdetails = rcontent[ctype]
                     schema = cdetails.get("schema", {})
-                    
+
                     if isinstance(schema, dict) and "$ref" in schema and schema["$ref"].startswith("#/components/schemas/"):
                         ref_name = schema["$ref"].split("/")[-1]
                         md.append(f"type {cap_name}Response = {ref_name};")
@@ -958,7 +959,7 @@ class GeminiTypeScriptFormatter:
                                 resolved_schema = self.resolver.resolve_pointer(resolved_schema["$ref"])
                             except:
                                 pass
-                                
+
                         if isinstance(resolved_schema, dict) and resolved_schema.get("type") == "object":
                             md.append(f"interface {cap_name}Response {{")
                             properties = resolved_schema.get("properties", {})
@@ -973,7 +974,7 @@ class GeminiTypeScriptFormatter:
                             ts_type = self._openapi_to_ts_type(stype)
                             md.append(f"type {cap_name}Response = {ts_type};")
                             has_res = True
-                            
+
         sig_args = []
         if has_params:
             sig_args.append(f"params: {cap_name}Params")
@@ -981,7 +982,7 @@ class GeminiTypeScriptFormatter:
             sig_args.append(f"req: {cap_name}Request")
         sig_args_str = ", ".join(sig_args)
         ret_str = f"{cap_name}Response" if has_res else "void"
-        
+
         md.append(f"function {base_name}({sig_args_str}): Promise<{ret_str}>;")
         md.append("")
         return "\n".join(md)
@@ -989,14 +990,14 @@ class GeminiTypeScriptFormatter:
     def _format_property_ts(self, name: str, schema: Any, indent: int = 0, required: bool = False, visited: Set[str] = None) -> List[str]:
         if visited is None:
             visited = set()
-            
+
         indent_str = " " * indent
         opt_str = "" if required else "?"
-        
+
         if not isinstance(schema, dict):
             ts_type = self._openapi_to_ts_type(str(schema))
             return [f"{indent_str}{name}{opt_str}: {ts_type};"]
-            
+
         if "$ref" in schema:
             ref_path = schema["$ref"]
             if ref_path.startswith("#/components/schemas/"):
@@ -1015,34 +1016,34 @@ class GeminiTypeScriptFormatter:
                     return self._format_property_ts(name, resolved, indent, required, new_visited)
                 except:
                     pass
-            
+
         stype = schema.get("type", "any")
         sdesc = schema.get("description", "").replace("\n", " ").strip()
         comment = f" // {sdesc}" if sdesc else ""
-        
+
         combiner = None
         for c in ["allOf", "anyOf", "oneOf"]:
             if c in schema:
                 combiner = c
                 break
-                
+
         if combiner:
             return [f"{indent_str}{name}{opt_str}: any; // {combiner}"]
 
         if stype == "object":
             properties = schema.get("properties", {})
             required_fields = set(schema.get("required", []))
-            
+
             if not properties:
                 return [f"{indent_str}{name}{opt_str}: Record<string, any>;{comment}"]
-                
+
             lines = [indent_str + f"{name}{opt_str}: {{" + comment]
             for prop_name, prop_data in properties.items():
                 is_req = prop_name in required_fields
                 lines.extend(self._format_property_ts(prop_name, prop_data, indent + 2, is_req, visited))
             lines.append(indent_str + "};")
             return lines
-            
+
         elif stype == "array":
             items = schema.get("items")
             if isinstance(items, dict):
@@ -1062,7 +1063,7 @@ class GeminiTypeScriptFormatter:
                             items = resolved
                         except:
                             pass
-                            
+
                 if isinstance(items, dict):
                     item_type = items.get("type", "any")
                     if item_type == "object":
@@ -1084,7 +1085,7 @@ class GeminiTypeScriptFormatter:
                     return [f"{indent_str}{name}{opt_str}: any[];{comment}"]
             else:
                 return [f"{indent_str}{name}{opt_str}: any[];{comment}"]
-                
+
         else:
             ts_type = self._openapi_to_ts_type(stype)
             return [f"{indent_str}{name}{opt_str}: {ts_type};{comment}"]

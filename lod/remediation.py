@@ -1,12 +1,14 @@
 import base64
 import json
-import urllib.request
-import urllib.error
-import time
 import os
 import subprocess
-from typing import Dict, Any, Optional
+import time
+import urllib.error
+import urllib.request
+from typing import Any, Dict, Optional
+
 from .llm_openapi import LLMOpenAPIConverter
+
 
 class GithubRemediator:
     """
@@ -32,7 +34,7 @@ class GithubRemediator:
         req_data = None
         if data is not None:
             req_data = json.dumps(data).encode("utf-8")
-        
+
         req = urllib.request.Request(url, data=req_data, headers=self._headers(), method=method)
         try:
             with urllib.request.urlopen(req, timeout=15) as response:

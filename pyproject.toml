@@ -31,7 +31,9 @@ dependencies = [
 dev = [
     "httpx",
     "fastapi",
-    "uvicorn"
+    "uvicorn",
+    "ruff",
+    "pytest"
 ]
 
 [project.urls]
@@ -44,3 +46,18 @@ lod = "lod.cli:main"
 
 [tool.setuptools]
 packages = ["lod"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "run_tests.py"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

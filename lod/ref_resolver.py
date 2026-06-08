@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Set, Union
+from typing import Any, Dict, Set
+
 
 class RefResolver:
     """
@@ -32,7 +33,7 @@ class RefResolver:
                 continue
             # Decode JSON pointer characters
             part = part.replace("~1", "/").replace("~0", "~")
-            
+
             if isinstance(current, dict) and part in current:
                 current = current[part]
             elif isinstance(current, list) and part.isdigit():
@@ -62,14 +63,14 @@ class RefResolver:
                 if ref_path in visited_refs:
                     # Return circular indicator
                     return {"$ref": ref_path, "circular": True}
-                
+
                 try:
                     resolved = self.resolve_pointer(ref_path)
-                    
+
                     # Track this reference to detect circular paths down the line
                     new_visited = visited_refs.copy()
                     new_visited.add(ref_path)
-                    
+
                     # Recursively resolve the resolved value
                     return self.resolve_refs_fully(resolved, new_visited)
                 except Exception as e:

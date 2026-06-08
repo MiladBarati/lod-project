@@ -1,13 +1,13 @@
-import unittest
 import http.server
-import threading
-import urllib.request
-import urllib.error
 import json
 import socket
+import threading
 import time
+import unittest
+import urllib.error
+import urllib.request
 
-from lod.proxy import compile_openapi_paths, coerce_type, ValidationProxyHandler, start_proxy, build_proxy_app
+from lod.proxy import build_proxy_app, coerce_type, compile_openapi_paths
 
 
 def get_free_port() -> int:
@@ -177,7 +177,7 @@ class TestProxyIntegration(unittest.TestCase):
         req = urllib.request.Request(url)
         with self.assertRaises(urllib.error.HTTPError) as cm:
             urllib.request.urlopen(req)
-        
+
         self.assertEqual(cm.exception.code, 422)
         body = json.loads(cm.exception.read().decode("utf-8"))
         self.assertEqual(body["status"], "error")
@@ -192,7 +192,7 @@ class TestProxyIntegration(unittest.TestCase):
         req = urllib.request.Request(url, method="POST", headers={"Content-Type": "application/json"})
         with self.assertRaises(urllib.error.HTTPError) as cm:
             urllib.request.urlopen(req)
-            
+
         self.assertEqual(cm.exception.code, 422)
         body = json.loads(cm.exception.read().decode("utf-8"))
         self.assertEqual(body["errors"][0]["location"], "body")
@@ -211,10 +211,10 @@ class TestProxyIntegration(unittest.TestCase):
         )
         with self.assertRaises(urllib.error.HTTPError) as cm:
             urllib.request.urlopen(req)
-            
+
         self.assertEqual(cm.exception.code, 422)
         body = json.loads(cm.exception.read().decode("utf-8"))
-        
+
         # Should catch multiple schema errors: missing username, invalid role enum
         errors = body["errors"]
         params = [e["parameter"] for e in errors]
@@ -242,7 +242,7 @@ class TestProxyIntegration(unittest.TestCase):
         req = urllib.request.Request(url)
         with self.assertRaises(urllib.error.HTTPError) as cm:
             urllib.request.urlopen(req)
-            
+
         self.assertEqual(cm.exception.code, 422)
         body = json.loads(cm.exception.read().decode("utf-8"))
         self.assertEqual(body["errors"][0]["issue"], "endpoint_not_found")

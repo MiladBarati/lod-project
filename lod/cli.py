@@ -7,7 +7,7 @@ import urllib.request
 from typing import Any, Dict
 
 from .drift import compare_specs
-from .registry import register_spec, get_spec, resolve_registry_uri
+from .registry import get_spec, register_spec, resolve_registry_uri
 from .remediation import GithubRemediator
 
 __version__ = "0.2.0"
@@ -181,7 +181,7 @@ def cmd_remediate(args: argparse.Namespace) -> None:
             verify_cmd=args.verify_cmd,
             allow_failed_verification=args.allow_failed_verification
         )
-        print(f"Remediation successful!", file=sys.stderr)
+        print("Remediation successful!", file=sys.stderr)
         print(f"  Branch created: {rem_report['branch']}", file=sys.stderr)
         print(f"  Pull Request opened: {rem_report['pr_url']}", file=sys.stderr)
     except ValueError as e:

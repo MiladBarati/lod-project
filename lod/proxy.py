@@ -3,10 +3,11 @@ import json
 import re
 import sys
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 from typing import Any, Dict, List
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
+
 import jsonschema
 
 from .ref_resolver import RefResolver
@@ -19,12 +20,12 @@ def compile_openapi_paths(spec_data: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     paths = spec_data.get("paths", {})
     compiled = []
-    
+
     for path_template, path_item in paths.items():
         # Split by slash, escape static parts, convert parameters
         segments = path_template.split("/")
         regex_segments = []
-        
+
         for seg in segments:
             if seg.startswith("{") and seg.endswith("}"):
                 param_name = seg[1:-1]
@@ -32,7 +33,7 @@ def compile_openapi_paths(spec_data: Dict[str, Any]) -> List[Dict[str, Any]]:
                 regex_segments.append(f"(?P<{param_name}>[^/]+)")
             else:
                 regex_segments.append(re.escape(seg))
-                
+
         regex_str = "^" + "/".join(regex_segments) + "$"
         try:
             pattern = re.compile(regex_str)
@@ -43,7 +44,7 @@ def compile_openapi_paths(spec_data: Dict[str, Any]) -> List[Dict[str, Any]]:
             })
         except re.error as e:
             print(f"Warning: Failed to compile path pattern '{path_template}': {e}", file=sys.stderr)
-            
+
     return compiled
 
 
@@ -148,10 +149,10 @@ class ValidationProxyHandler(http.server.BaseHTTPRequestHandler):
 
         # 4. Perform Schema Validation
         errors = []
-        
+
         # Combine parameters from Path Item and Operation level
         spec_parameters = path_item.get("parameters", []) + operation.get("parameters", [])
-        
+
         # Validate Parameters (Query, Path, Headers)
         for param in spec_parameters:
             name = param.get("name")
@@ -248,7 +249,7 @@ class ValidationProxyHandler(http.server.BaseHTTPRequestHandler):
 
     def send_error_response(self, errors: List[Dict[str, Any]], start_time: float, path_only: str):
         duration = time.perf_counter() - start_time
-        
+
         self.send_response(422)
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -260,7 +261,7 @@ class ValidationProxyHandler(http.server.BaseHTTPRequestHandler):
             "message": "API request validation failed",
             "errors": errors
         }
-        
+
         body_bytes = json.dumps(response_body, indent=2).encode("utf-8")
         self.send_header("Content-Length", str(len(body_bytes)))
         self.end_headers()
@@ -303,10 +304,10 @@ class ValidationProxyHandler(http.server.BaseHTTPRequestHandler):
                 self.send_header("Content-Length", str(len(resp_body)))
                 self.end_headers()
                 self.wfile.write(resp_body)
-                
+
                 duration = time.perf_counter() - start_time
                 print(f"[{self.log_date_time_string()}] {self.command} {path_only} - {status_code} Success - Forwarded ({duration:.4f}s)", file=sys.stdout)
-                
+
         except urllib.error.HTTPError as e:
             # Downstream API returned HTTP Error status
             resp_body = e.read()
@@ -319,7 +320,7 @@ class ValidationProxyHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(resp_body)))
             self.end_headers()
             self.wfile.write(resp_body)
-            
+
             duration = time.perf_counter() - start_time
             print(f"[{self.log_date_time_string()}] {self.command} {path_only} - {status_code} Error - Forwarded ({duration:.4f}s)", file=sys.stderr)
 
@@ -327,7 +328,7 @@ class ValidationProxyHandler(http.server.BaseHTTPRequestHandler):
             # Bad gateway (connection failure or timeouts)
             self.send_response(502)
             self.send_header("Content-Type", "application/json")
-            
+
             err_body_dict = {
                 "status": "error",
                 "message": f"Bad Gateway: Failed to connect or receive response from upstream host: {e}"
@@ -343,19 +344,19 @@ class ValidationProxyHandler(http.server.BaseHTTPRequestHandler):
 
 def build_proxy_app(spec_data: Dict[str, Any], upstream: str):
     """Builds and returns the FastAPI application for the request validation proxy."""
-    from fastapi import FastAPI, Request, Response
-    from fastapi.responses import JSONResponse
-    from fastapi.middleware.cors import CORSMiddleware
     import httpx
+    from fastapi import FastAPI, Request, Response
+    from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.responses import JSONResponse
 
     # Resolve all spec schema pointers first
     resolved_spec = RefResolver(spec_data).resolve_refs_fully(spec_data)
-    
+
     # Pre-compile paths
     compiled_paths = compile_openapi_paths(resolved_spec)
 
     app = FastAPI(title="LOD Validation Proxy")
-    
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -363,12 +364,12 @@ def build_proxy_app(spec_data: Dict[str, Any], upstream: str):
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
+
     @app.api_route("/{path_only:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
     async def proxy_endpoint(request: Request, path_only: str):
         path_with_slash = "/" + path_only
         method = request.method.lower()
-        
+
         # 1. Match Path and Extract Path Parameters
         matched_path = None
         path_params = {}
@@ -378,7 +379,7 @@ def build_proxy_app(spec_data: Dict[str, Any], upstream: str):
                 matched_path = item
                 path_params = m.groupdict()
                 break
-                
+
         if not matched_path:
             errors = [{
                 "location": "path",
@@ -391,7 +392,7 @@ def build_proxy_app(spec_data: Dict[str, Any], upstream: str):
                 "message": "API request validation failed",
                 "errors": errors
             })
-            
+
         # 2. Match Method Operation
         path_item = matched_path["item"]
         operation = path_item.get(method)
@@ -408,21 +409,21 @@ def build_proxy_app(spec_data: Dict[str, Any], upstream: str):
                 "message": "API request validation failed",
                 "errors": errors
             })
-            
+
         # 3. Read Body
         body_data = await request.body()
-        
+
         # 4. Perform Schema Validation
         errors = []
-        
+
         spec_parameters = path_item.get("parameters", []) + operation.get("parameters", [])
-        
+
         query_params_raw = {}
         for k, v in request.query_params.multi_items():
             if k not in query_params_raw:
                 query_params_raw[k] = []
             query_params_raw[k].append(v)
-            
+
         for param in spec_parameters:
             name = param.get("name")
             param_in = param.get("in")
@@ -541,7 +542,7 @@ def build_proxy_app(spec_data: Dict[str, Any], upstream: str):
                 )
                 duration = time.perf_counter() - start_time
                 print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {request.method} {path_with_slash} - {resp.status_code} Success - Forwarded ({duration:.4f}s)", file=sys.stdout)
-                
+
                 exclude_headers = {"content-length", "transfer-encoding"}
                 resp_headers = {k: v for k, v in resp.headers.items() if k.lower() not in exclude_headers}
                 return Response(content=resp.content, status_code=resp.status_code, headers=resp_headers)
@@ -560,28 +561,28 @@ def start_proxy(spec_data: Dict[str, Any], upstream: str, port: int):
     """Initializes and runs the validation proxy (using FastAPI/Uvicorn if available, otherwise ThreadingHTTPServer)."""
     try:
         import uvicorn
-        
+
         # Build FastAPI app
         app = build_proxy_app(spec_data, upstream)
-        
+
         print(f"LOD Validation Proxy (Async) listening on http://localhost:{port}", file=sys.stdout)
         print(f"Proxying requests to upstream: {upstream}", file=sys.stdout)
         uvicorn.run(app, host="0.0.0.0", port=port, log_level="warning")
-        
+
     except ImportError:
         # Fallback to ThreadingHTTPServer if uvicorn/fastapi/httpx are not available
         print("Warning: fastapi, uvicorn, or httpx not available. Falling back to legacy synchronous ThreadingHTTPServer proxy...", file=sys.stderr)
-        
+
         resolved_spec = RefResolver(spec_data).resolve_refs_fully(spec_data)
         compiled_paths = compile_openapi_paths(resolved_spec)
-        
+
         ValidationProxyHandler.spec_data = resolved_spec
         ValidationProxyHandler.upstream = upstream
         ValidationProxyHandler.compiled_paths = compiled_paths
 
         server_address = ("", port)
         server = http.server.ThreadingHTTPServer(server_address, ValidationProxyHandler)
-        
+
         print(f"LOD Validation Proxy (Sync Fallback) listening on http://localhost:{port}", file=sys.stdout)
         print(f"Proxying requests to upstream: {upstream}", file=sys.stdout)
         server.serve_forever()

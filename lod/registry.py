@@ -16,7 +16,7 @@ def register_spec(input_path: str, spec_id: str, tag: str, registry_dir: str = D
     """Registers a specification in the local registry."""
     if not os.path.exists(input_path):
         raise FileNotFoundError(f"Input file '{input_path}' not found.")
-        
+
     with open(input_path, "r", encoding="utf-8") as f:
         try:
             data = json.load(f)
@@ -25,10 +25,10 @@ def register_spec(input_path: str, spec_id: str, tag: str, registry_dir: str = D
 
     dest_path = get_registry_path(spec_id, tag, registry_dir)
     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-    
+
     with open(dest_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
-        
+
     return dest_path
 
 def get_spec(spec_id: str, tag: str, registry_dir: str = DEFAULT_REGISTRY_DIR) -> Dict[str, Any]:
@@ -36,7 +36,7 @@ def get_spec(spec_id: str, tag: str, registry_dir: str = DEFAULT_REGISTRY_DIR) -
     path = get_registry_path(spec_id, tag, registry_dir)
     if not os.path.exists(path):
         raise FileNotFoundError(f"Spec '{spec_id}' with tag '{tag}' not found in registry at '{path}'.")
-        
+
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -47,13 +47,13 @@ def resolve_registry_uri(uri: str, registry_dir: str = DEFAULT_REGISTRY_DIR) -> 
     """
     if not uri.startswith("registry://"):
         raise ValueError(f"Invalid registry URI: must start with 'registry://'. Got '{uri}'")
-        
+
     pattern = uri[len("registry://"):]
     if ":" not in pattern:
         raise ValueError(f"Invalid registry URI format: must be 'registry://<spec_id>:<tag>'. Got '{uri}'")
-        
+
     spec_id, tag = pattern.split(":", 1)
     if not spec_id or not tag:
         raise ValueError(f"Invalid registry URI content: spec_id and tag must be non-empty. Got '{uri}'")
-        
+
     return get_spec(spec_id, tag, registry_dir)

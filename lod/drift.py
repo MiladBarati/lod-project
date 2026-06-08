@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Dict, List, Set, Tuple, Optional
+from typing import Any, Dict, List, Set, Tuple
+
 from .ref_resolver import RefResolver
 
 logger = logging.getLogger("lod_gateway.drift")
@@ -14,7 +15,7 @@ class OpenAPIComparator:
         self.new_spec = new_spec
         self.base_resolver = RefResolver(base_spec)
         self.new_resolver = RefResolver(new_spec)
-        
+
         self.breaking_changes: List[str] = []
         self.non_breaking_changes: List[str] = []
 
@@ -42,7 +43,7 @@ class OpenAPIComparator:
             for method, op in path_item.items():
                 if method.lower() not in ["get", "post", "put", "delete", "patch", "options", "head", "trace"]:
                     continue
-                
+
                 # Check if path or method is missing in new spec
                 if path not in new_paths or method not in new_paths[path]:
                     self.breaking_changes.append(
@@ -160,7 +161,7 @@ class OpenAPIComparator:
         # If body is missing/added
         if not base_body and not new_body:
             return
-        
+
         # Resolve body refs
         if isinstance(base_body, dict) and "$ref" in base_body:
             try:
@@ -216,7 +217,7 @@ class OpenAPIComparator:
                     f"{endpoint}: Request body field `{field}` deleted"
                 )
                 continue
-            
+
             new_ftype, new_freq = new_flat[field]
             if ftype != new_ftype:
                 self.breaking_changes.append(
