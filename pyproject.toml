@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lod-cli"
+version = "0.2.0"
+description = "LOD — LLM-Optimized Documentation. API schema governance for LLM pipelines: compile, drift-check, and auto-remediate OpenAPI specs."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Milad Barati" }
+]
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+dependencies = [
+    "tiktoken",
+    "jsonschema"
+]
+
+[project.urls]
+Homepage = "https://github.com/MiladBarati/lod-project"
+Repository = "https://github.com/MiladBarati/lod-project.git"
+Issues = "https://github.com/MiladBarati/lod-project/issues"
+
+[project.scripts]
+lod = "lod.cli:main"
+
+[tool.setuptools]
+packages = ["lod"]
