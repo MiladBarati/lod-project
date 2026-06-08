@@ -12,4 +12,4 @@
 
 - [x] 3.1 Run `ruff check .` to verify formatting and style compliance
 - [x] 3.2 Run test suite via `pytest` to verify test runner configuration
-- [ ] 3.3 Stage and commit all remaining untracked specs, config files, and archives to achieve a clean Git working tree status
+- [x] 3.3 Stage and commit all remaining untracked specs, config files, and archives to achieve a clean Git working tree status
